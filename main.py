@@ -3,18 +3,18 @@ import requests, os, json
 from apscheduler.schedulers.background import BackgroundScheduler
 import openai
 
-# 環境變數讀取
+# ------------------ 環境變數 ------------------
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-
 openai.api_key = OPENAI_API_KEY
 
+# ------------------ 初始化 ------------------
 app = Flask(__name__)
 scheduler = BackgroundScheduler()
 scheduler.start()
 
-# 發送訊息給 Line
+# ------------------ 傳送 Line 訊息 ------------------
 def push_to_line(message):
     url = 'https://api.line.me/v2/bot/message/broadcast'
     headers = {
@@ -27,60 +27,83 @@ def push_to_line(message):
             "text": message
         }]
     }
-    requests.post(url, headers=headers, json=body)
+    response = requests.post(url, headers=headers, json=body)
+    print(f"📤 Line push status: {response.status_code}")
+    print("📤 Line response:", response.text)
 
-# 抓新聞 + 整理成摘要
-import os
-import requests
+# ------------------ 使用 OpenAI 進行摘要 ------------------
+def summarize_with_openai(articles):
+    try:
+        prompt = "以下是今天的商業新聞標題，請幫我用繁體中文整理出一段約100字的重點摘要：\n\n"
+        for i, article in enumerate(articles):
+            prompt += f"{i+1}. {article['title']}\n"
+        
+        print("🧠 Sending to OpenAI...")
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }],
+            temperature=0.7,
+            max_tokens=300
+        )
+        summary = response.choices[0].message.content.strip()
+        print("✅ OpenAI summary done.")
+        return summary
+    except Exception as e:
+        print("❌ Error during OpenAI summarization:", str(e))
+        return "（OpenAI 摘要失敗）"
 
-import os
-import requests
-
+# ------------------ 抓新聞 + 摘要 ------------------
 def fetch_and_summarize_news():
-    api_key = os.getenv("NEWSAPI_KEY")
-    if not api_key:
-        print("❌ NEWSAPI_KEY not found in environment")
+    print("🔄 開始執行新聞摘要任務")
+    if not NEWSAPI_KEY:
+        print("❌ NEWSAPI_KEY not found.")
         return
 
-    news_url = f"https://newsapi.org/v2/top-headlines?category=business&language=en&pageSize=5&apiKey={api_key}"
-    print("🔍 Fetching from:", news_url)
+    news_url = f"https://newsapi.org/v2/top-headlines?category=business&language=en&pageSize=5&apiKey={NEWSAPI_KEY}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "application/json",
+        "Referer": "https://newsapi.org/",
+        "Origin": "https://newsapi.org"
+    }
 
     try:
-        response = requests.get(news_url)
-        print(f"📥 Status code: {response.status_code}")
-        print("📄 Response content (first 300 chars):")
-        print(response.text[:300])
+        print("🌐 正在向 NewsAPI 發送請求...")
+        response = requests.get(news_url, headers=headers)
+        print(f"📥 NewsAPI 回應狀態: {response.status_code}")
 
-        response.raise_for_status()  # 若不是 200，會丟出 HTTPError
-
-        data = response.json()  # 若不是 JSON，會丟出 JSONDecodeError
+        response.raise_for_status()
+        data = response.json()
 
         if data.get("status") != "ok":
-            print("❌ NewsAPI returned non-ok status:", data)
+            print("❌ NewsAPI 錯誤狀態：", data)
             return
 
         articles = data.get("articles", [])
         if not articles:
-            print("ℹ️ No articles found.")
+            print("ℹ️ 沒有找到新聞。")
             return
 
-        summary = ""
-        for i, article in enumerate(articles):
-            summary += f"🔹 {article['title']}\n{article['url']}\n\n"
+        print(f"📰 共獲得 {len(articles)} 則新聞。")
+        ai_summary = summarize_with_openai(articles)
 
-        print("✅ Summary:\n", summary)
+        final_message = "📢 今日商業新聞摘要：\n" + ai_summary
+        push_to_line(final_message)
 
     except requests.exceptions.HTTPError as http_err:
-        print("❌ HTTP error occurred:", http_err)
+        print("❌ HTTP 錯誤：", http_err)
     except requests.exceptions.RequestException as req_err:
-        print("❌ Request error occurred:", req_err)
+        print("❌ 請求錯誤：", req_err)
     except Exception as e:
-        print("❌ Unknown error:", str(e))
+        print("❌ 未知錯誤：", str(e))
 
+# ------------------ 定時任務 ------------------
+scheduler.add_job(fetch_and_summarize_news, 'interval', minutes=30)
 
-# 每 30 分鐘執行一次
-scheduler.add_job(fetch_and_summarize_news, 'interval', minutes=1)
-
+# ------------------ 路由 ------------------
 @app.route("/")
 def index():
     return "ProfessorJoe is running."
@@ -91,5 +114,6 @@ def callback():
     print("📥 Webhook 收到資料：", json.dumps(body, indent=2))
     return "OK"
 
+# ------------------ 啟動 ------------------
 if __name__ == "__main__":
     app.run()
