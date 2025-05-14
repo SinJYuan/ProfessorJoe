@@ -2,6 +2,7 @@ from flask import Flask, request
 import requests, os, json
 from apscheduler.schedulers.background import BackgroundScheduler
 from openai import OpenAI  # 新版用法
+from datetime import datetime
 
 # ------------------ 環境變數 ------------------
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
