@@ -63,6 +63,6 @@ def callback():
 if __name__ == "__main__":
     # 啟動排程：每 30 分鐘執行一次
     scheduler = BackgroundScheduler()
-    scheduler.add_job(job, 'interval', minutes=30)
+    scheduler.add_job(job, 'interval', minutes=3)
     scheduler.start()
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
