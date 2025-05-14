@@ -15,6 +15,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 app = Flask(__name__)
 scheduler = BackgroundScheduler()
 scheduler.start()
+fetch_and_summarize_news()
 
 # ------------------ 傳送 Line 訊息 ------------------
 def push_to_line(message):
