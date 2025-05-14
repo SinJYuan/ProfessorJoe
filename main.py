@@ -1,13 +1,15 @@
 from flask import Flask, request
 import requests, os, json
 from apscheduler.schedulers.background import BackgroundScheduler
-import openai
+from openai import OpenAI  # 新版用法
 
 # ------------------ 環境變數 ------------------
 LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-openai.api_key = OPENAI_API_KEY
+
+# 初始化 OpenAI Client
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ------------------ 初始化 ------------------
 app = Flask(__name__)
@@ -34,12 +36,12 @@ def push_to_line(message):
 # ------------------ 使用 OpenAI 進行摘要 ------------------
 def summarize_with_openai(articles):
     try:
-        prompt = "以下是今天的商業新聞標題，請幫我用繁體中文整理出一段約100字的重點摘要：\n\n"
+        prompt = "以下是今天的商業新聞標題，請幫我用繁體中文整理出重點摘要，然後條列出幾檔相關台股美股的標的，並給出你的看法來建議買進或賣出，回答在150字以內：\n\n"
         for i, article in enumerate(articles):
             prompt += f"{i+1}. {article['title']}\n"
-        
+
         print("🧠 Sending to OpenAI...")
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[{
                 "role": "user",
@@ -101,7 +103,7 @@ def fetch_and_summarize_news():
         print("❌ 未知錯誤：", str(e))
 
 # ------------------ 定時任務 ------------------
-scheduler.add_job(fetch_and_summarize_news, 'interval', minutes=30)
+scheduler.add_job(fetch_and_summarize_news, 'interval', minutes=60)
 
 # ------------------ 路由 ------------------
 @app.route("/")
