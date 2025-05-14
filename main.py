@@ -15,7 +15,6 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 app = Flask(__name__)
 scheduler = BackgroundScheduler()
 scheduler.start()
-fetch_and_summarize_news()
 
 # ------------------ 傳送 Line 訊息 ------------------
 def push_to_line(message):
@@ -104,7 +103,7 @@ def fetch_and_summarize_news():
         print("❌ 未知錯誤：", str(e))
 
 # ------------------ 定時任務 ------------------
-scheduler.add_job(fetch_and_summarize_news, 'interval', minutes=60)
+scheduler.add_job(fetch_and_summarize_news, 'interval', minutes=60, next_run_time=datetime.now())
 
 # ------------------ 路由 ------------------
 @app.route("/")
