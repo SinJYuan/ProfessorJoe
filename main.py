@@ -33,27 +33,30 @@ def push_to_line(message):
 import os
 import requests
 
+import os
+import requests
+
 def fetch_and_summarize_news():
     api_key = os.getenv("NEWSAPI_KEY")
     if not api_key:
-        print("❌ NEWSAPI_KEY not set")
+        print("❌ NEWSAPI_KEY not found in environment")
         return
 
     news_url = f"https://newsapi.org/v2/top-headlines?category=business&language=en&pageSize=5&apiKey={api_key}"
+    print("🔍 Fetching from:", news_url)
 
     try:
         response = requests.get(news_url)
-        print(f"✅ NewsAPI status: {response.status_code}")
-        print("🔍 Response text preview:", response.text[:200])  # 只印前200字
+        print(f"📥 Status code: {response.status_code}")
+        print("📄 Response content (first 300 chars):")
+        print(response.text[:300])
 
-        if response.status_code != 200:
-            print("❌ Failed to fetch news")
-            return
+        response.raise_for_status()  # 若不是 200，會丟出 HTTPError
 
-        data = response.json()
+        data = response.json()  # 若不是 JSON，會丟出 JSONDecodeError
 
         if data.get("status") != "ok":
-            print("❌ API response not ok:", data)
+            print("❌ NewsAPI returned non-ok status:", data)
             return
 
         articles = data.get("articles", [])
@@ -67,11 +70,12 @@ def fetch_and_summarize_news():
 
         print("✅ Summary:\n", summary)
 
-        # 🔁 把這裡換成推播給 LINE 的函式即可
-        # send_line_push(summary)
-
+    except requests.exceptions.HTTPError as http_err:
+        print("❌ HTTP error occurred:", http_err)
+    except requests.exceptions.RequestException as req_err:
+        print("❌ Request error occurred:", req_err)
     except Exception as e:
-        print("❌ Exception while fetching news:", str(e))
+        print("❌ Unknown error:", str(e))
 
 
 # 每 30 分鐘執行一次
