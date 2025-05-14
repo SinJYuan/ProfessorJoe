@@ -30,28 +30,49 @@ def push_to_line(message):
     requests.post(url, headers=headers, json=body)
 
 # 抓新聞 + 整理成摘要
+import os
+import requests
+
 def fetch_and_summarize_news():
-    print("⏰ 抓取新聞中...")
-    news_url = (
-        f"https://newsapi.org/v2/top-headlines?"
-        f"category=business&language=en&pageSize=5&apiKey={NEWSAPI_KEY}"
-    )
-    res = requests.get(news_url).json()
-    articles = res.get("articles", [])
+    api_key = os.getenv("NEWSAPI_KEY")
+    if not api_key:
+        print("❌ NEWSAPI_KEY not set")
+        return
 
-    headlines = "\n".join([f"{i+1}. {a['title']}" for i, a in enumerate(articles)])
-    full_text = "你是財經分析師，將簡要摘要下列新聞，並評估對台股和美股可能的短期影響。\n" + headlines
+    news_url = f"https://newsapi.org/v2/top-headlines?category=business&language=en&pageSize=5&apiKey={api_key}"
 
-    # 用 OpenAI 生成摘要
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": full_text}]
-        )
-        summary = response.choices[0].message.content.strip()
-        push_to_line("📈 每日財經整理來囉：\n\n" + summary)
+        response = requests.get(news_url)
+        print(f"✅ NewsAPI status: {response.status_code}")
+        print("🔍 Response text preview:", response.text[:200])  # 只印前200字
+
+        if response.status_code != 200:
+            print("❌ Failed to fetch news")
+            return
+
+        data = response.json()
+
+        if data.get("status") != "ok":
+            print("❌ API response not ok:", data)
+            return
+
+        articles = data.get("articles", [])
+        if not articles:
+            print("ℹ️ No articles found.")
+            return
+
+        summary = ""
+        for i, article in enumerate(articles):
+            summary += f"🔹 {article['title']}\n{article['url']}\n\n"
+
+        print("✅ Summary:\n", summary)
+
+        # 🔁 把這裡換成推播給 LINE 的函式即可
+        # send_line_push(summary)
+
     except Exception as e:
-        push_to_line("❌ OpenAI 回應失敗：" + str(e))
+        print("❌ Exception while fetching news:", str(e))
+
 
 # 每 30 分鐘執行一次
 scheduler.add_job(fetch_and_summarize_news, 'interval', minutes=1)
