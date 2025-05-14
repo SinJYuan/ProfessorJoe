@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: ProfessorJoe
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app
+    envVars:
+      - key: OPENAI_API_KEY
+        value: your_openai_api_key
+      - key: LINE_ACCESS_TOKEN
+        value: your_line_access_token
+      - key: NEWSAPI_KEY
+        value: your_newsapi_key

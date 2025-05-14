@@ -1,4 +1,6 @@
 flask
-requests
-apscheduler
 gunicorn
+requests
+openai
+apscheduler
+line-bot-sdk
