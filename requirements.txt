@@ -1,6 +1,5 @@
 flask
-gunicorn
 requests
+feedparser
 openai
 apscheduler
-line-bot-sdk

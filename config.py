@@ -1,0 +1,5 @@
+import os
+
+LINE_ACCESS_TOKEN = os.getenv("LINE_ACCESS_TOKEN")
+NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
