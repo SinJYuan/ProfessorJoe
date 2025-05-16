@@ -3,3 +3,4 @@ requests
 feedparser
 openai
 apscheduler
+gunicorn
