@@ -85,7 +85,7 @@ def fetch_yahoo_rss():
 
 def aggregate_news_sources():
     news = []
-    news += fetch_newsapi()
+    #news += fetch_newsapi()
     news += fetch_google_news()
     news += fetch_yahoo_rss()
     return news
